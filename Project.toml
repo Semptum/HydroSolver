@@ -1,0 +1,4 @@
+name = "HydroSolver"
+uuid = "cbc904cb-1f41-4ab2-9086-f5b84984862d"
+authors = ["Andre Kalouguine <andre.kalouguine@ens-lyon.fr>"]
+version = "0.1.0"
