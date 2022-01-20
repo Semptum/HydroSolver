@@ -1,4 +1,4 @@
-function interpolate(mesh::CFD_Mesh{FloatT},U,::Type{Interpolation{:Upwind}}) where {FloatT}
+function interpolate(mesh::NoDim_CFD_Mesh{FloatT, PointT},U,::Type{Interpolation{:Upwind}}) where {PointT,FloatT}
     N_cells = length(mesh.cells)
     N_faces = length(mesh.faces)
     interp_matrix = sparse(zeros(N_faces,N_cells))
@@ -14,17 +14,17 @@ function interpolate(mesh::CFD_Mesh{FloatT},U,::Type{Interpolation{:Upwind}}) wh
     return interp_matrix
 end
 
-function interpolate(mesh::CFD_Mesh{FloatT},U,::Type{Interpolation{:LinearUpwind}}) where {FloatT}
+function interpolate(mesh::NoDim_CFD_Mesh{FloatT, PointT},U,::Type{Interpolation{:LinearUpwind}}) where {PointT,FloatT}
     N_cells = length(mesh.cells)
     N_faces = length(mesh.faces)
     interp_matrix = interpolate(mesh,U,Interpolation{:Upwind})
     grad = gradient(mesh,Gradient{:LeastSquares})
     face_cell = [interp_matrix[i,:].nzind[1] for i in 1:N_faces]
     d = mesh.fCenters-mesh.cCenters[face_cell]
-    return interp_matrix+Diagonal([i[1] for i in d])*grad[1][face_cell,:] + Diagonal([i[2] for i in d])*grad[2][face_cell,:]
+    return sum(interp_matrix+Diagonal([i[k] for i in d])*grad[k][face_cell,:] for k in 1:length(grad))
 end
 
-function interpolate(mesh::CFD_Mesh{FloatT},::Type{Interpolation{:Central}}) where {FloatT}
+function interpolate(mesh::NoDim_CFD_Mesh{FloatT, PointT},::Type{Interpolation{:Central}}) where {PointT,FloatT}
     N_cells = length(mesh.cells)
     N_faces = length(mesh.faces)
     interp_matrix = sparse(zeros(N_faces,N_cells))
@@ -37,7 +37,7 @@ function interpolate(mesh::CFD_Mesh{FloatT},::Type{Interpolation{:Central}}) whe
         else
             r_PN = mesh.cCenters[N] - mesh.cCenters[P]
             r_Pf = mesh.fCenters[i] - mesh.cCenters[P]
-            α = r_Pf⋅r_PN/norm(r_PN)
+            α = r_Pf⋅r_PN/norm(r_PN)^2
             interp_matrix[i,[P,N]] .= [α,1-α]
         end
     end

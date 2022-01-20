@@ -20,7 +20,7 @@ function rectangle_cartesian_mesher(x_ranges,y_ranges)
     cCenters = Vector{PointT}(undef, N_cells)
     cLabels = zeros(Int, N_cells)
     faces = Vector{Tuple{Int,Int}}(undef, N_faces)
-    fNodes = Vector{NTuple{Dim,Int}}(undef, N_faces)
+    fNodes = Vector{Vector{Int}}(undef, N_faces)
     fAVecs = Vector{PointT}(undef, N_faces)
     fCenters = Vector{PointT}(undef, N_faces)
     fLabels = zeros(Int,N_faces)
@@ -36,26 +36,26 @@ function rectangle_cartesian_mesher(x_ranges,y_ranges)
     index = 1
     for i_x in 1:(N_x-1), i_y in 1:(N_y-1)
         i_left_up = existing_points[(i_x,i_y)]
-        fNodes[index] = sort([i_left_up,existing_points[(i_x+1,i_y)]]) |> Tuple
+        fNodes[index] = sort([i_left_up,existing_points[(i_x+1,i_y)]])
         face_index_by_points[(fNodes[index][1],fNodes[index][2])]=index
         fAVecs[index] = R*PointT(nodes[fNodes[index][1]]-nodes[fNodes[index][2]])
         fCenters[index] = 1/2*(nodes[fNodes[index][1]]+nodes[fNodes[index][2]])
         index += 1
-        fNodes[index] = sort([i_left_up,existing_points[(i_x,i_y+1)]]) |> Tuple
+        fNodes[index] = sort([i_left_up,existing_points[(i_x,i_y+1)]]) 
         face_index_by_points[(fNodes[index][1],fNodes[index][2])]=index
         fAVecs[index] = R*PointT(nodes[fNodes[index][1]]-nodes[fNodes[index][2]])
         fCenters[index] = 1/2*(nodes[fNodes[index][1]]+nodes[fNodes[index][2]])
         index += 1
     end
     for i in 1:(N_x-1)
-        fNodes[index] = sort([existing_points[(i,N_y)],existing_points[(i+1,N_y)]]) |> Tuple
+        fNodes[index] = sort([existing_points[(i,N_y)],existing_points[(i+1,N_y)]])
         face_index_by_points[(fNodes[index][1],fNodes[index][2])]=index
         fAVecs[index] = R*PointT(nodes[fNodes[index][1]]-nodes[fNodes[index][2]])
         fCenters[index] = 1/2*(nodes[fNodes[index][1]]+nodes[fNodes[index][2]])
         index += 1
     end
     for i in 1:(N_y-1)
-        fNodes[index] = sort([existing_points[(N_x,i)],existing_points[(N_x,i+1)]]) |> Tuple
+        fNodes[index] = sort([existing_points[(N_x,i)],existing_points[(N_x,i+1)]]) 
         face_index_by_points[(fNodes[index][1],fNodes[index][2])]=index
         fAVecs[index] = R*PointT(nodes[fNodes[index][1]]-nodes[fNodes[index][2]])
         fCenters[index] = 1/2*(nodes[fNodes[index][1]]+nodes[fNodes[index][2]])
@@ -98,6 +98,73 @@ function rectangle_cartesian_mesher(x_ranges,y_ranges)
         faces[da] = d==fNodes[da][1] ? (left, cell) : (cell,left)
     end
     mesh = CFD_Mesh{Float64}(
+        cells,
+        cNeighbours,
+        cVols,
+        cCenters,
+        cLabels,
+        faces,
+        fNodes,
+        fAVecs,
+        fCenters,
+        fLabels,
+        nodes,
+        nLabels,
+    )
+    return mesh 
+end 
+
+
+
+
+function linear_mesher(x_ranges)
+    PointT = Float64
+    FloatT = Float64
+
+    N_x = length(x_ranges)
+    N_faces = N_x
+    N_cells = (N_x-1)
+    N_nodes = N_x
+
+    cells = Vector{Vector{Int}}(undef,N_cells)
+    cNeighbours = Vector{Vector{Int}}(undef, N_cells)
+    cVols = Vector{FloatT}(undef, N_cells)
+    cCenters = Vector{PointT}(undef, N_cells)
+    cLabels = zeros(Int, N_cells)
+    faces = Vector{SVector{2,Int}}(undef, N_faces)
+    fNodes = Vector{Vector{Int}}(undef, N_faces)
+    fAVecs = Vector{PointT}(undef, N_faces)
+    fCenters = Vector{PointT}(undef, N_faces)
+    fLabels = zeros(Int,N_faces)
+    nodes = Vector{PointT}(undef, N_nodes)
+    nLabels = zeros(Int,N_nodes)
+
+    nodes .= collect(x_ranges)
+    for i in 1:(N_x-1)
+        cells[i] = [i,i+1]
+        if 1<i<N_x-1
+            cNeighbours[i] = [i-1,i+1]
+        elseif i==1
+            cNeighbours[i] = [i+1]
+        else
+            cNeighbours[i] = [i-1]
+        end
+        cVols[i] = abs(x_ranges[i+1]-x_ranges[i])
+        cCenters[i] = (x_ranges[i+1]+x_ranges[i])/2
+    end
+    for i in 1:N_x
+        if 1<i<N_x
+            faces[i] = [i-1,i]
+        elseif i==1
+            faces[i] = [-1,i]
+        else
+            faces[i] = [i-1,-1]
+        end
+        fNodes[i] = [i]
+        fAVecs[i] = 1
+        fCenters[i] = nodes[i]
+    end
+    mesh = NoDim_CFD_Mesh{Float64,Float64}(
         cells,
         cNeighbours,
         cVols,
