@@ -97,7 +97,7 @@ function rectangle_cartesian_mesher(x_ranges,y_ranges)
         faces[cd] = c==fNodes[cd][1] ? (down, cell) : (cell,down)
         faces[da] = d==fNodes[da][1] ? (left, cell) : (cell,left)
     end
-    mesh = CFD_Mesh{Float64}(
+    mesh = PlaneMesh{Float64}(
         cells,
         cNeighbours,
         cVols,
@@ -164,7 +164,7 @@ function linear_mesher(x_ranges)
         fAVecs[i] = 1
         fCenters[i] = nodes[i]
     end
-    mesh = NoDim_CFD_Mesh{Float64,Float64}(
+    mesh = LinMesh{Float64}(
         cells,
         cNeighbours,
         cVols,

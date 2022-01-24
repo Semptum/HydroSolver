@@ -13,21 +13,32 @@ struct NoDim_CFD_Mesh{FloatT, PointT}
     nLabels::Vector{Int}            # Labels of the nodes
 end
 
-CFD_Mesh = NoDim_CFD_Mesh{FloatT,SVector{2,Float64}} where FloatT
-LinMesh = NoDim_CFD_Mesh{FloatT,FloatT} where FloatT
-
-struct CFD_Solution{FloatT}
-    mesh::CFD_Mesh{FloatT}
+struct RefUnits
+    ref_length::Unitful.Quantity
+    ref_mass::Unitful.Quantity
+    ref_time::Unitful.Quantity
+    ref_current::Unitful.Quantity
+    ref_temp::Unitful.Quantity
+    ref_lum::Unitful.Quantity
+    ref_mat::Unitful.Quantity
 end
+
+PlaneMesh = NoDim_CFD_Mesh{FloatT,SVector{2,Float64}} where FloatT
+LinMesh = NoDim_CFD_Mesh{FloatT,FloatT} where FloatT
 
 
 abstract type Gradient{Method} end
 abstract type Laplacian{Method} end
 abstract type Interpolation{Method} end
+abstract type Divergence{Method} end
 
 abstract type BoundaryConditions{T} end
 
 struct Dirichlet{T} <: BoundaryConditions{T}
+    value::T
+end
+
+struct DirichletNormal{T} <: BoundaryConditions{T}
     value::T
 end
 
@@ -40,78 +51,4 @@ struct None{T} <: BoundaryConditions{T} end
 struct AffineTransform{MatrixT,VectorT}
     A::MatrixT
     B::VectorT
-end
-
-function +(trX::AffineTransform, trY::AffineTransform)
-    A = trX.A + trY.A
-    B = trX.B + trY.B
-    MatrixT = typeof(A)
-    VectorT = typeof(B)
-    return AffineTransform{MatrixT,VectorT}(A,B)
-end
-
-function +(trX::AffineTransform, M::AbstractMatrix)
-    A = trX.A + M
-    B = trX.B
-    MatrixT = typeof(A)
-    VectorT = typeof(B)
-    return AffineTransform{MatrixT,VectorT}(A,B)
-end
-
-function +(M::AbstractMatrix, trX::AffineTransform)
-    trX+M
-end
-
-function -(M::AbstractMatrix, trX::AffineTransform)
-    -trX+M
-end
-
-function -(trX::AffineTransform, M::AbstractMatrix)
-    trX + -1*M
-end
-
-function -(trX::AffineTransform)
-    trX *-1
-end
-
-function *(trX::AffineTransform, trY::AffineTransform)
-    A = trX.A * trY.A
-    B = trX.A * trY.B + trX.B
-    MatrixT = typeof(A)
-    VectorT = typeof(B)
-    return AffineTransform{MatrixT,VectorT}(A,B)
-end
-
-function *(M::AbstractMatrix, trX::AffineTransform)
-    A = M * trX.A
-    B = M * trX.B
-    MatrixT = typeof(A)
-    VectorT = typeof(B)
-    return AffineTransform{MatrixT,VectorT}(A,B)
-end
-
-function *(trX::AffineTransform, M::AbstractMatrix)
-    A = trX.A * M
-    B = trX.B
-    MatrixT = typeof(A)
-    VectorT = typeof(B)
-    return AffineTransform{MatrixT,VectorT}(A,B)
-end
-
-function *(trX::AffineTransform, X::AbstractVector)
-    return trX.A * X + trX.B
-end
-
-
-function *(trX::AffineTransform{MT,VT}, X::Number) where {VT,MT}
-    return AffineTransform{MT,VT}(trX.A*X,trX.B*X)
-end
-
-function *(X::Number, trX::AffineTransform{MT,VT}) where {VT,MT}
-    return AffineTransform{MT,VT}(trX.A*X,trX.B*X)
-end
-
-
-function *(x::SVector{2,T}, y::SVector{2,T}) where T
-    x⋅y
 end

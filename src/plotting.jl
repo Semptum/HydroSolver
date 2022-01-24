@@ -1,13 +1,24 @@
-function mesh_to_polygons(mesh::CFD_Mesh{FloatT}) where FloatT
+function mesh_to_polygons(mesh::PlaneMesh{FloatT}) where FloatT
     N_cells = length(mesh.cCenters)
-    list_polygons = Vector{Vector{SVector{2,FloatT}}}(undef,N_cells)
+    N_nodes = length(mesh.nodes)
+    faces = Matrix{Int64}(undef,(N_cells*2,3))
+    vertices = Matrix{Float64}(undef,(N_cells*4,2))
     for i in 1:N_cells
         edges = mesh.fNodes[mesh.cells[i]]
         connec = edges_to_connectivity(edges)
         list = connectivity_to_list(connec)
-        list_polygons[i] = SVector{2,FloatT}.(mesh.nodes[list])
+        vertices[i,:] .= mesh.nodes[list[1]]
+        vertices[i+N_cells,:] .= mesh.nodes[list[2]]
+        vertices[i+2*N_cells,:] .= mesh.nodes[list[3]]
+        vertices[i+3*N_cells,:] .= mesh.nodes[list[4]]
+        faces[i,:] .= [i, i+N_cells, i+2*N_cells]
+        faces[i+N_cells,:] .=  [i+2*N_cells,i+3*N_cells, i]
     end
-    return list_polygons
+    return faces, vertices
+end
+
+function col(val)
+    return vcat(val,val,val,val)
 end
 
 function edges_to_connectivity(edges)
@@ -32,12 +43,17 @@ function connectivity_to_list(connectivity)
     return list
 end
 
-function plot(mesh::CFD_Mesh)
-    pol = mesh_to_polygons(mesh)
-    f = Figure()
-    ax = f[1, 1] = Axis(f)
-    for i in pol
-        poly!(ax,i)
+
+function continuous_interpolation(mesh::PlaneMesh,value, point)
+    i_closest = findmin(norm.([point] .- mesh.cCenters))[2]
+    return value[i_closest]
+end
+
+function find_in_range(x_range,x)
+    for i in 1:length(x_range)
+        if x_range[i]>x
+            return i-1
+        end
     end
-    return f
+    return length(x_range)
 end
